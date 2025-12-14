@@ -26,3 +26,6 @@ def client():
         # hand the client to the test
         yield c
         # --- teardown happens when the 'with' block exits ---
+        # Clean up database after each test
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)

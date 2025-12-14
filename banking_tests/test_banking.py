@@ -64,3 +64,36 @@ def test_bad_balance_422(client, bad_balance):
     """tests invalid user ids throw 422 error"""
     result = client.post("/api/banking", json=bank_account_details_payload_post(balance=bad_balance))
     assert result.status_code == 422 # pydantic validation error
+
+def test_get_all_bank_accounts(client):
+    """tests getting all bank accounts"""
+    client.post("/api/banking", json=bank_account_details_payload_post())
+    result = client.get("/api/banking")
+    assert result.status_code == 200
+    assert len(result.json()) == 1
+
+def test_get_bank_account_ok(client):
+    """tests getting a specific bank account"""
+    payload = bank_account_details_payload_post(name="TestUser", email="test@example.com")
+    client.post("/api/banking", json=payload)
+    result = client.get("/api/banking/1")
+    assert result.status_code == 200
+    assert result.json()["name"] == "TestUser"
+
+def test_patch_account_ok(client):
+    """tests partial update of bank account"""
+    client.post("/api/banking", json=bank_account_details_payload_post())
+    result = client.patch("/api/banking/1", json={"name": "Jane"})
+    assert result.status_code == 200
+    assert result.json()["name"] == "Jane"
+
+def test_patch_account_404(client):
+    """tests patch on non-existent account"""
+    result = client.patch("/api/banking/999", json={"name": "Jane"})
+    assert result.status_code == 404
+
+def test_patch_account_no_fields(client):
+    """tests patch with no fields"""
+    client.post("/api/banking", json=bank_account_details_payload_post())
+    result = client.patch("/api/banking/1", json={})
+    assert result.status_code == 400
