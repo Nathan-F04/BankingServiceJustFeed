@@ -1,5 +1,8 @@
 """Banking python file"""
 
+import json
+import os
+import aio_pika
 from fastapi import FastAPI, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
@@ -12,7 +15,22 @@ from .schemas import BankUserCreate, BankUserRead, BankPartialUpdate
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
+#Rabbit MQ
+EXCHANGE_NAME = "just_feed_exchange"
+RABBIT_URL = os.getenv("RABBIT_URL")
+
+async def get_exchange():
+    """
+    Open a connection, create a channel and declare a topic exchange.
+    Returns (connection, channel, exchange).
+    """
+    conn = await aio_pika.connect_robust(RABBIT_URL)
+    ch = await conn.channel()
+    ex = await ch.declare_exchange(EXCHANGE_NAME, aio_pika.ExchangeType.TOPIC)
+    return conn, ch, ex
+
 def get_db():
+    """Get db"""
     db = SessionLocal()
     try:
         yield db
@@ -27,23 +45,25 @@ def commit_or_rollback(db: Session, error_msg: str):
         raise HTTPException(status_code=409, detail=error_msg)
 
 @app.get("/api/banking", response_model=list[BankUserRead])
-def get_all_bank_accounts(db: Session = Depends(get_db)):
+def get_all_bank_cards(db: Session = Depends(get_db)):
+    """Get all bank cards at once"""
     stmt = select(BankUserDB).order_by(BankUserDB.id)
     #Useful for debugging
     result = db.execute(stmt)
     bank_list = result.scalars().all()
     return bank_list
-    #return list(db.execute(stmt).scalars())
 
 @app.get("/api/banking/{banking_id}", response_model=BankUserRead)
-def get_bank_account(banking_id: int, db: Session = Depends(get_db)):
+def get_bank_card(banking_id: int, db: Session = Depends(get_db)):
+    """Get specific card"""
     bank_user = db.get(BankUserDB, banking_id)
     if not bank_user:
-        raise HTTPException(status_code=404, detail="bank account not found")
+        raise HTTPException(status_code=404, detail="bank card not found")
     return bank_user
 
 @app.post("/api/banking", response_model=BankUserRead, status_code=status.HTTP_201_CREATED)
-def add_bank_account(payload: BankUserCreate, db: Session = Depends(get_db)):
+async def add_bank_card(payload: BankUserCreate, db: Session = Depends(get_db)):
+    """Create a card"""
     bank_user = BankUserDB(**payload.model_dump())
     db.add(bank_user)
     try:
@@ -51,30 +71,18 @@ def add_bank_account(payload: BankUserCreate, db: Session = Depends(get_db)):
         db.refresh(bank_user)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="bank user already exists")
+        raise HTTPException(status_code=409, detail="Could not create card")
+    
+    #Queue Logic
+    conn, ch, ex = await get_exchange()
+    msg = aio_pika.Message(body=json.dumps("Card added successfully").encode())
+    await ex.publish(msg, routing_key="bank.create")
+    await conn.close()
     return bank_user
-
-@app.put("/api/banking/{banking_id}", response_model=BankUserRead)
-def edit_bank_account_details(banking_id: int, payload: BankUserCreate, db: Session = Depends(get_db)):
-    bank_user = db.get(BankUserDB, banking_id)
-    if not bank_user:
-        raise HTTPException(status_code=404, detail="Bank id not found")
-    # Update fields from payload
-    for key, value in payload.model_dump().items():
-        setattr(bank_user, key, value)
-    try:
-        db.commit()       # ORM knows this is an update
-        db.refresh(bank_user)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Bank user integrity error")
-
-    return bank_user
-
-
 
 @app.patch("/api/banking/{banking_id}", response_model=BankUserRead)
-def partial_edit_user(banking_id: int, payload: BankPartialUpdate, db: Session = Depends(get_db)):
+async def partial_edit_card(banking_id: int, payload: BankPartialUpdate, db: Session = Depends(get_db)):
+    """Edit a card"""
     # Get only fields that were sent (exclude unset means fields missing from request are ignored)
     edited_bank_details = payload.model_dump(exclude_unset=True)
     
@@ -89,17 +97,28 @@ def partial_edit_user(banking_id: int, payload: BankPartialUpdate, db: Session =
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Conflict updating user")
+        raise HTTPException(status_code=409, detail="Conflict updating card")
 
     updated_user = db.get(BankUserDB, banking_id)
+        #Queue Logic
+    conn, ch, ex = await get_exchange()
+    msg = aio_pika.Message(body=json.dumps("Card details edited successfully").encode())
+    await ex.publish(msg, routing_key="bank.edited")
+    await conn.close()
     return updated_user
 
 @app.delete("/api/banking/{banking_id}", status_code=204)
-def delete_bank_account_details(banking_id: int, db: Session = Depends(get_db)) -> Response:
-        bank_user = db.get(BankUserDB, banking_id)
-        if not bank_user:
-            raise HTTPException(status_code=404, detail="Bank user not found")
-        #try except here?
-        db.delete(bank_user)
-        db.commit()
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+async def delete_bank_card_details(banking_id: int, db: Session = Depends(get_db)) -> Response:
+    """Delete a bank card"""
+    bank_user = db.get(BankUserDB, banking_id)
+    if not bank_user:
+        raise HTTPException(status_code=404, detail="Bank card not found")
+    db.delete(bank_user)
+    db.commit()
+
+    #Queue Logic
+    conn, ch, ex = await get_exchange()
+    msg = aio_pika.Message(body=json.dumps("Card deleted successfully").encode())
+    await ex.publish(msg, routing_key="bank.delete")
+    await conn.close()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
