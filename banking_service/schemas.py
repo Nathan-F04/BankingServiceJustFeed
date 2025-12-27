@@ -13,28 +13,25 @@ cvcInt = Annotated[int, Ge(100), Le(999)]
 
 # ---------- Banking ----------
 class BankUserCreate(BaseModel):
-    user_id: Optional[int] = None
-    card_number: Cardstr
-    name_on_card: NameStr
-    month_of_expiry: monthInt
-    year_of_expiry: yearInt
+    creditCardNumber: Cardstr
+    nameOnCard: NameStr
+    expMonth: monthInt
+    expYear: yearInt
     cvc: cvcInt
 
 class BankUserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    user_id: int
-    card_number: Cardstr
-    name_on_card: NameStr
-    month_of_expiry: monthInt
-    year_of_expiry: yearInt
+    creditCardNumber: Cardstr
+    nameOnCard: NameStr
+    expMonth: monthInt
+    expYear: yearInt
     cvc: cvcInt
 
 class BankPartialUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    user_id: Optional[int] = None
-    card_number: Optional[Cardstr] = None
-    name_on_card: Optional[NameStr] = None
-    month_of_expiry: Optional[monthInt] = None
-    year_of_expiry: Optional[yearInt] = None
+    creditCardNumber: Optional[Cardstr] = None
+    nameOnCard: Optional[NameStr] = None
+    expMonth: Optional[monthInt] = None
+    expYear: Optional[yearInt] = None
     cvc: Optional[cvcInt] = None
