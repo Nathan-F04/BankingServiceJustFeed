@@ -44,7 +44,7 @@ def commit_or_rollback(db: Session, error_msg: str):
         raise HTTPException(status_code=409, detail=error_msg)
 
 @app.get("/api/banking", response_model=list[BankUserRead])
-def get_all_bank_accounts(db: Session = Depends(get_db)):
+def get_all_bank_cards(db: Session = Depends(get_db)):
     stmt = select(BankUserDB).order_by(BankUserDB.id)
     #Useful for debugging
     result = db.execute(stmt)
@@ -52,14 +52,14 @@ def get_all_bank_accounts(db: Session = Depends(get_db)):
     return bank_list
 
 @app.get("/api/banking/{banking_id}", response_model=BankUserRead)
-def get_bank_account(banking_id: int, db: Session = Depends(get_db)):
+def get_bank_card(banking_id: int, db: Session = Depends(get_db)):
     bank_user = db.get(BankUserDB, banking_id)
     if not bank_user:
         raise HTTPException(status_code=404, detail="bank account not found")
     return bank_user
 
 @app.post("/api/banking", response_model=BankUserRead, status_code=status.HTTP_201_CREATED)
-async def add_bank_account(payload: BankUserCreate, db: Session = Depends(get_db)):
+async def add_bank_card(payload: BankUserCreate, db: Session = Depends(get_db)):
     bank_user = BankUserDB(**payload.model_dump())
     db.add(bank_user)
     try:
@@ -77,7 +77,7 @@ async def add_bank_account(payload: BankUserCreate, db: Session = Depends(get_db
     return bank_user
 
 @app.patch("/api/banking/{banking_id}", response_model=BankUserRead)
-async def partial_edit_user(banking_id: int, payload: BankPartialUpdate, db: Session = Depends(get_db)):
+async def partial_edit_card(banking_id: int, payload: BankPartialUpdate, db: Session = Depends(get_db)):
     # Get only fields that were sent (exclude unset means fields missing from request are ignored)
     edited_bank_details = payload.model_dump(exclude_unset=True)
     
@@ -103,7 +103,7 @@ async def partial_edit_user(banking_id: int, payload: BankPartialUpdate, db: Ses
     return updated_user
 
 @app.delete("/api/banking/{banking_id}", status_code=204)
-async def delete_bank_account_details(banking_id: int, db: Session = Depends(get_db)) -> Response:
+async def delete_bank_card_details(banking_id: int, db: Session = Depends(get_db)) -> Response:
     bank_user = db.get(BankUserDB, banking_id)
     if not bank_user:
         raise HTTPException(status_code=404, detail="Bank user not found")
