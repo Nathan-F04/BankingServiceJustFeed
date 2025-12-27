@@ -1,6 +1,7 @@
 """Profile test configs"""
 
 import pytest
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -29,3 +30,13 @@ def client():
         # Clean up database after each test
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
+
+@pytest.fixture
+def mock_rabbitmq():
+    """Fixture that mocks RabbitMQ for all tests that need it"""
+    with patch('banking_service.banking.get_exchange') as mock_get_exchange:
+        mock_conn = AsyncMock()
+        mock_ch = AsyncMock()
+        mock_ex = AsyncMock()
+        mock_get_exchange.return_value = (mock_conn, mock_ch, mock_ex)
+        yield mock_get_exchange

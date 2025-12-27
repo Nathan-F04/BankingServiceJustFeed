@@ -3,43 +3,38 @@
 # app/schemas.py
 from typing import Annotated, Optional
 from annotated_types import Ge, Le
-from pydantic import BaseModel, EmailStr, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 NameStr = Annotated[str, StringConstraints(min_length=2, max_length=50)]
 Cardstr = Annotated[str, StringConstraints(pattern=r"^\d{16}$")]
-pinInt = Annotated[int, Ge(1000), Le(9999)]
-balanceInt = Annotated[int, Ge(1)]
+yearInt = Annotated[int, Ge(2025), Le(2050)]
+monthInt = Annotated[int, Ge(1), Le(12)]
+cvcInt = Annotated[int, Ge(100), Le(999)]
 
 # ---------- Banking ----------
 class BankUserCreate(BaseModel):
-    name: NameStr
-    email: EmailStr
-    pin: pinInt
-    card: Cardstr 
-    balance: balanceInt
+    user_id: Optional[int] = None
+    card_number: Cardstr
+    name_on_card: NameStr
+    month_of_expiry: monthInt
+    year_of_expiry: yearInt
+    cvc: cvcInt
 
 class BankUserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    name: NameStr
-    email: EmailStr
-    pin: pinInt
-    card: Cardstr
-    balance: balanceInt
-
-class BankUserPut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int #Should this be here since we shouldn't be able to edit id?
-    name: NameStr
-    email: EmailStr
-    pin: pinInt
-    card: Cardstr
-    balance: balanceInt
+    user_id: int
+    card_number: Cardstr
+    name_on_card: NameStr
+    month_of_expiry: monthInt
+    year_of_expiry: yearInt
+    cvc: cvcInt
 
 class BankPartialUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    name: Optional[NameStr] = None
-    email: Optional[EmailStr] = None
-    pin: Optional[pinInt] = None
-    card: Optional[Cardstr] = None
-    balance: Optional[balanceInt] = None
+    user_id: Optional[int] = None
+    card_number: Optional[Cardstr] = None
+    name_on_card: Optional[NameStr] = None
+    month_of_expiry: Optional[monthInt] = None
+    year_of_expiry: Optional[yearInt] = None
+    cvc: Optional[cvcInt] = None

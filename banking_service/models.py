@@ -7,8 +7,9 @@ class BankUserDB(Base):
     __tablename__ = "banking_users"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    pin: Mapped[int] = mapped_column(Integer, nullable=False)
-    card: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    balance: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer) #make this a foreign key
+    card_number: Mapped[str] = mapped_column(String, nullable=False)
+    name_on_card: Mapped[str] = mapped_column(String, nullable=False)
+    month_of_expiry: Mapped[int] = mapped_column(Integer, nullable=False)
+    year_of_expiry: Mapped[int] = mapped_column(Integer, nullable=False)
+    cvc: Mapped[int] = mapped_column(Integer, nullable=False)
