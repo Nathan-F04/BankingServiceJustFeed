@@ -1,9 +1,10 @@
 """Test File for Banking Service"""
 
 import pytest
+from banking_service.models import UserDB
 
-def card_payload(creditCardNumber="1111222233334444",nameOnCard="Ionaton",expMonth=2, expYear=2028,cvc=111):
-    return{"creditCardNumber":creditCardNumber, "nameOnCard":nameOnCard, "expMonth":expMonth, "expYear": expYear,"cvc":cvc}
+def card_payload(user_id=1, creditCardNumber="1111222233334444",nameOnCard="Ionaton",expMonth=2, expYear=2028,cvc=111):
+    return{"user_id": user_id, "creditCardNumber":creditCardNumber, "nameOnCard":nameOnCard, "expMonth":expMonth, "expYear": expYear,"cvc":cvc}
 
 def test_create_bank_card_ok(mock_rabbitmq, client):
     """tests if you can successfully create a card"""

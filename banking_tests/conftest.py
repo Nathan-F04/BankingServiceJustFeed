@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from banking_service.banking import app, get_db
-from banking_service.models import Base
+from banking_service.models import Base, UserDB
 from sqlalchemy.pool import StaticPool
 
 TEST_DB_URL = "sqlite+pysqlite:///:memory:"
@@ -24,6 +24,12 @@ def client():
             db.close()
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
+        # Create test user
+        db = TestingSessionLocal()
+        test_user = UserDB(id=1, username="testuser")
+        db.add(test_user)
+        db.commit()
+        db.close()
         # hand the client to the test
         yield c
         # --- teardown happens when the 'with' block exits ---

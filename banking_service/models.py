@@ -3,6 +3,13 @@ from sqlalchemy import String, Integer, ForeignKey
 
 class Base(DeclarativeBase):
     pass
+
+class UserDB(Base):
+    __tablename__ = "users"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String, nullable=False)
+
 class BankUserDB(Base):
     __tablename__ = "banking_users"
 
