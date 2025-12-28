@@ -57,7 +57,8 @@ def test_patch_card_ok(mock_rabbitmq, mock_user_validation, client):
     assert result.json()["creditCardNumber"] == "5555666677778888"
     mock_rabbitmq.assert_called()
 
-def test_patch_card_404(client):
+def test_patch_card_404(mock_rabbitmq, client):
     """tests patch on non-existent card"""
     result = client.patch("/api/banking/999", json={"creditCardNumber": "5555666677778888"})
     assert result.status_code == 404
+    mock_rabbitmq.assert_called()
