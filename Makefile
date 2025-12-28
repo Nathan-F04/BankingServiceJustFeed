@@ -1,8 +1,5 @@
 # Microservice Makefile
-BANK_APP = Src.banking_service.banking:app
-LOGIN_APP = Src.login_service.login:app
-NOTIF_APP = Src.notification_service.notification:app
-ORDER_APP = Src.order_service.orders:app
+BANK_APP = banking_service.banking:app
 PID_FILE = .uvicorn.pid
 
 install:

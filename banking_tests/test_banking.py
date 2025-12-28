@@ -2,8 +2,8 @@
 
 import pytest
 
-def card_payload(user_id=1, card_number="1111222233334444",name_on_card="Ionaton",month_of_expiry=2, year_of_expiry=2028,cvc=111):
-    return{"user_id": user_id, "card_number":card_number, "name_on_card":name_on_card, "month_of_expiry":month_of_expiry, "year_of_expiry": year_of_expiry,"cvc":cvc}
+def card_payload(creditCardNumber="1111222233334444",nameOnCard="Ionaton",expMonth=2, expYear=2028,cvc=111):
+    return{"creditCardNumber":creditCardNumber, "nameOnCard":nameOnCard, "expMonth":expMonth, "expYear": expYear,"cvc":cvc}
 
 def test_create_bank_card_ok(mock_rabbitmq, client):
     """tests if you can successfully create a card"""
@@ -25,10 +25,10 @@ def test_delete_card_then_404(mock_rabbitmq, client):
     assert result2.status_code == 404
     mock_rabbitmq.assert_called()
 
-@pytest.mark.parametrize("bad_card_number", [12345677, "1234536", "BadString12"])
-def test_bad_card_number_422(client, bad_card_number):
+@pytest.mark.parametrize("bad_creditCardNumber", [12345677, "1234536", "BadString12"])
+def test_bad_creditCardNumber_422(client, bad_creditCardNumber):
     """tests invalid user ids throw 422 error"""
-    result = client.post("/api/banking", json=card_payload(card_number=bad_card_number))
+    result = client.post("/api/banking", json=card_payload(creditCardNumber=bad_creditCardNumber))
     assert result.status_code == 422 # pydantic validation error
 
 def test_get_all_bank_cards(mock_rabbitmq, client):
@@ -41,22 +41,22 @@ def test_get_all_bank_cards(mock_rabbitmq, client):
 
 def test_get_bank_card_ok(mock_rabbitmq, client):
     """tests getting a specific bank card"""
-    payload = card_payload(card_number="5555666677778888")
+    payload = card_payload(creditCardNumber="5555666677778888")
     client.post("/api/banking", json=payload)
     result = client.get("/api/banking/1")
     assert result.status_code == 200
-    assert result.json()["card_number"] == "5555666677778888"
+    assert result.json()["creditCardNumber"] == "5555666677778888"
     mock_rabbitmq.assert_called()
 
 def test_patch_card_ok(mock_rabbitmq, client):
     """tests partial update of bank card"""
     client.post("/api/banking", json=card_payload())
-    result = client.patch("/api/banking/1", json={"card_number": "5555666677778888"})
+    result = client.patch("/api/banking/1", json={"creditCardNumber": "5555666677778888"})
     assert result.status_code == 200
-    assert result.json()["card_number"] == "5555666677778888"
+    assert result.json()["creditCardNumber"] == "5555666677778888"
     mock_rabbitmq.assert_called()
 
 def test_patch_card_404(client):
     """tests patch on non-existent card"""
-    result = client.patch("/api/banking/999", json={"card_number": "5555666677778888"})
+    result = client.patch("/api/banking/999", json={"creditCardNumber": "5555666677778888"})
     assert result.status_code == 404

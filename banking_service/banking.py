@@ -4,6 +4,7 @@ import json
 import os
 import aio_pika
 from fastapi import FastAPI, Depends, HTTPException, status, Response
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +15,18 @@ from .schemas import BankUserCreate, BankUserRead, BankPartialUpdate
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
+
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #Rabbit MQ
 EXCHANGE_NAME = "just_feed_exchange"
