@@ -3,6 +3,7 @@
 import json
 import os
 import aio_pika
+import httpx
 from fastapi import FastAPI, Depends, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -15,6 +16,8 @@ from .schemas import BankUserCreate, BankUserRead, BankPartialUpdate
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
+
+LOGIN_SERVICE_URL = os.getenv("LOGIN_SERVICE_URL", "http://localhost:8001")
 
 origins = [
     "http://localhost:3000",
@@ -74,9 +77,22 @@ def get_bank_card(banking_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="bank card not found")
     return bank_user
 
+async def validate_user_exists(user_id: int):
+    """Validate user exists in login service"""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{LOGIN_SERVICE_URL}/api/users/{user_id}")
+            if response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Invalid user_id")
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Login service unavailable")
+
 @app.post("/api/banking", response_model=BankUserRead, status_code=status.HTTP_201_CREATED)
 async def add_bank_card(payload: BankUserCreate, db: Session = Depends(get_db)):
     """Create a card"""
+    # Validate user exists in login service
+    await validate_user_exists(payload.user_id)
+    
     bank_user = BankUserDB(**payload.model_dump())
     db.add(bank_user)
     try:

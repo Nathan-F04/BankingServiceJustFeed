@@ -40,3 +40,10 @@ def mock_rabbitmq():
         mock_ex = AsyncMock()
         mock_get_exchange.return_value = (mock_conn, mock_ch, mock_ex)
         yield mock_get_exchange
+
+@pytest.fixture
+def mock_user_validation():
+    """Mock user validation to always pass"""
+    with patch('banking_service.banking.validate_user_exists') as mock_validate:
+        mock_validate.return_value = None
+        yield mock_validate
