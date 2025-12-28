@@ -50,13 +50,6 @@ def get_db():
     finally:
         db.close()
 
-def commit_or_rollback(db: Session, error_msg: str):
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail=error_msg)
-
 @app.get("/api/banking", response_model=list[BankUserRead])
 def get_all_bank_cards(db: Session = Depends(get_db)):
     """Get all bank cards at once"""
@@ -79,15 +72,17 @@ async def add_bank_card(payload: BankUserCreate, db: Session = Depends(get_db)):
     """Create a card"""
     bank_user = BankUserDB(**payload.model_dump())
     db.add(bank_user)
+    conn, ch, ex = await get_exchange()
     try:
         db.commit()
         db.refresh(bank_user)
     except IntegrityError:
         db.rollback()
+        msg = aio_pika.Message(body=json.dumps("Card couldn't be added").encode())
+        await ex.publish(msg, routing_key="bank.create")
+        await conn.close()
         raise HTTPException(status_code=409, detail="Could not create card")
     
-    #Queue Logic
-    conn, ch, ex = await get_exchange()
     msg = aio_pika.Message(body=json.dumps("Card added successfully").encode())
     await ex.publish(msg, routing_key="bank.create")
     await conn.close()
@@ -98,11 +93,20 @@ async def partial_edit_card(banking_id: int, payload: BankPartialUpdate, db: Ses
     """Edit a card"""
     # Get only fields that were sent (exclude unset means fields missing from request are ignored)
     edited_bank_details = payload.model_dump(exclude_unset=True)
-    
+    conn, ch, ex = await get_exchange()
+
     if not edited_bank_details:
+        msg = aio_pika.Message(body=json.dumps("Card details couldn't be edited successfully").encode())
+        await ex.publish(msg, routing_key="bank.edited")
+        await conn.close()
         raise HTTPException(status_code=400, detail="No fields provided to update")
+
     Bank_account = db.get(BankUserDB, banking_id)
+
     if not Bank_account:
+        msg = aio_pika.Message(body=json.dumps("Card details couldn't be edited successfully").encode())
+        await ex.publish(msg, routing_key="bank.edited")
+        await conn.close()
         raise HTTPException(status_code=404, detail="Bank account id not found")
     try:
         stmt = update(BankUserDB).where(BankUserDB.id == banking_id).values(**edited_bank_details)
@@ -110,11 +114,12 @@ async def partial_edit_card(banking_id: int, payload: BankPartialUpdate, db: Ses
         db.commit()
     except IntegrityError:
         db.rollback()
+        msg = aio_pika.Message(body=json.dumps("Card details couldn't be edited successfully").encode())
+        await ex.publish(msg, routing_key="bank.edited")
+        await conn.close()
         raise HTTPException(status_code=409, detail="Conflict updating card")
 
     updated_user = db.get(BankUserDB, banking_id)
-        #Queue Logic
-    conn, ch, ex = await get_exchange()
     msg = aio_pika.Message(body=json.dumps("Card details edited successfully").encode())
     await ex.publish(msg, routing_key="bank.edited")
     await conn.close()
@@ -124,13 +129,16 @@ async def partial_edit_card(banking_id: int, payload: BankPartialUpdate, db: Ses
 async def delete_bank_card_details(banking_id: int, db: Session = Depends(get_db)) -> Response:
     """Delete a bank card"""
     bank_user = db.get(BankUserDB, banking_id)
+    conn, ch, ex = await get_exchange()
+
     if not bank_user:
+        msg = aio_pika.Message(body=json.dumps("Card couldn't be deleted successfully").encode())
+        await ex.publish(msg, routing_key="bank.delete")
+        await conn.close()
         raise HTTPException(status_code=404, detail="Bank card not found")
     db.delete(bank_user)
     db.commit()
 
-    #Queue Logic
-    conn, ch, ex = await get_exchange()
     msg = aio_pika.Message(body=json.dumps("Card deleted successfully").encode())
     await ex.publish(msg, routing_key="bank.delete")
     await conn.close()
