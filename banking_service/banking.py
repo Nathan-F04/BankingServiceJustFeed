@@ -53,16 +53,26 @@ def get_db():
     finally:
         db.close()
 
+@app.get("/api/banking/{banking_id}", response_model=list[BankUserRead])
+def get_bank_cards_by_id(banking_id: int, db: Session = Depends(get_db)):
+    """Get all bank cards per user_id once"""
+    stmt = select(BankUserDB).where(BankUserDB.user_id == banking_id)
+    result = db.execute(stmt)
+    if not result:
+        raise HTTPException(status_code=404, detail="bank card not found for id")
+    bank_list = result.scalars().all()
+    return bank_list
+
+
 @app.get("/api/banking", response_model=list[BankUserRead])
 def get_all_bank_cards(db: Session = Depends(get_db)):
     """Get all bank cards at once"""
     stmt = select(BankUserDB).order_by(BankUserDB.id)
-    #Useful for debugging
     result = db.execute(stmt)
     bank_list = result.scalars().all()
     return bank_list
 
-@app.get("/api/banking/{banking_id}", response_model=BankUserRead)
+@app.get("/api/banking/view/{banking_id}", response_model=BankUserRead)
 def get_bank_card(banking_id: int, db: Session = Depends(get_db)):
     """Get specific card"""
     bank_user = db.get(BankUserDB, banking_id)
@@ -70,22 +80,10 @@ def get_bank_card(banking_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="bank card not found")
     return bank_user
 
-async def validate_user_exists(user_id: int):
-    """Validate user exists in login service"""
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(f"{LOGIN_SERVICE_URL}/api/users/{user_id}")
-            if response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Invalid user_id")
-        except httpx.RequestError:
-            raise HTTPException(status_code=503, detail="Login service unavailable")
-
 @app.post("/api/banking", response_model=BankUserRead, status_code=status.HTTP_201_CREATED)
 async def add_bank_card(payload: BankUserCreate, db: Session = Depends(get_db)):
     """Create a card"""
-    # Validate user exists in login service
-    await validate_user_exists(payload.user_id)
-    
+
     bank_user = BankUserDB(**payload.model_dump())
     db.add(bank_user)
     conn, ch, ex = await get_exchange()
