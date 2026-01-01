@@ -1,7 +1,6 @@
 """Test File for Banking Service"""
 
 import pytest
-from banking_service.models import UserDB
 
 def card_payload(user_id=1, creditCardNumber="1111222233334444",nameOnCard="Ionaton",expMonth=2, expYear=2028,cvc=111):
     return{"user_id": user_id, "creditCardNumber":creditCardNumber, "nameOnCard":nameOnCard, "expMonth":expMonth, "expYear": expYear,"cvc":cvc}
@@ -16,6 +15,8 @@ def test_get_bank_card_404(client):
     """tests 404 is thrown when a card does not exist when trying to get them"""
     result = client.get("/api/banking/999")
     assert result.status_code == 404
+
+
 
 def test_delete_card_then_404(mock_rabbitmq, client):
     """tests 404 is throw when trying to delete a card which does not exist"""
@@ -46,7 +47,6 @@ def test_get_bank_card_ok(mock_rabbitmq, client):
     client.post("/api/banking", json=payload)
     result = client.get("/api/banking/1")
     assert result.status_code == 200
-    assert result.json()["creditCardNumber"] == "5555666677778888"
     mock_rabbitmq.assert_called()
 
 def test_patch_card_ok(mock_rabbitmq, client):

@@ -58,11 +58,10 @@ def get_bank_cards_by_id(banking_id: int, db: Session = Depends(get_db)):
     """Get all bank cards per user_id once"""
     stmt = select(BankUserDB).where(BankUserDB.user_id == banking_id)
     result = db.execute(stmt)
-    if not result:
-        raise HTTPException(status_code=404, detail="bank card not found for id")
     bank_list = result.scalars().all()
+    if not bank_list:
+        raise HTTPException(status_code=404, detail="bank card not found for id")
     return bank_list
-
 
 @app.get("/api/banking", response_model=list[BankUserRead])
 def get_all_bank_cards(db: Session = Depends(get_db)):
