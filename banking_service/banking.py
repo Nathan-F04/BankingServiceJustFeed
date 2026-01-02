@@ -3,7 +3,6 @@
 import json
 import os
 import aio_pika
-import httpx
 from fastapi import FastAPI, Depends, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -95,7 +94,7 @@ async def add_bank_card(payload: BankUserCreate, db: Session = Depends(get_db)):
         await ex.publish(msg, routing_key="bank.create")
         await conn.close()
         raise HTTPException(status_code=409, detail="Could not create card")
-    
+
     msg = aio_pika.Message(body=json.dumps("Card added successfully").encode())
     await ex.publish(msg, routing_key="bank.create")
     await conn.close()
@@ -114,9 +113,9 @@ async def partial_edit_card(banking_id: int, payload: BankPartialUpdate, db: Ses
         await conn.close()
         raise HTTPException(status_code=400, detail="No fields provided to update")
 
-    Bank_account = db.get(BankUserDB, banking_id)
+    bank_account = db.get(BankUserDB, banking_id)
 
-    if not Bank_account:
+    if not bank_account:
         msg = aio_pika.Message(body=json.dumps("Card details couldn't be edited successfully").encode())
         await ex.publish(msg, routing_key="bank.edited")
         await conn.close()
